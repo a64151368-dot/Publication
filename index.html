@@ -167,6 +167,40 @@ footer{
   font-style:italic;font-size:1.05rem;color:var(--text-light);
 }
 
+
+/* Великі напівпрозорі геометричні фігури, що піднімаються СТРОГО вздовж боків */
+.geometry-field{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  perspective:1000px;contain:layout paint;
+}
+.floating-shape{
+  position:absolute;bottom:-28vh;left:var(--x);width:var(--size);height:var(--size);
+  overflow:visible;opacity:0;transform-origin:center;
+  filter:drop-shadow(0 8px 12px rgba(76,45,117,.12));
+  animation:shape-rise var(--duration) linear var(--delay) infinite;
+  will-change:transform,opacity;
+}
+.floating-shape svg{display:block;width:100%;height:100%;overflow:visible}
+.floating-shape .glass-shape{
+  stroke:rgba(107,63,160,.42);stroke-width:1.5;stroke-linejoin:round;
+  fill:url(#shapeGlass);vector-effect:non-scaling-stroke;
+}
+.floating-shape .shine{
+  fill:none;stroke:rgba(255,255,255,.7);stroke-width:2;stroke-linecap:round;
+  stroke-linejoin:round;opacity:.72;vector-effect:non-scaling-stroke;
+}
+@keyframes shape-rise{
+  0%{transform:translate3d(0,0,0) rotate(var(--tilt)) rotateY(var(--depth)) scale(.72);opacity:0}
+  9%{opacity:var(--alpha)}
+  48%{transform:translate3d(var(--drift),-58vh,0) rotate(calc(var(--tilt) + 13deg)) rotateY(calc(var(--depth) + 22deg)) scale(1);opacity:var(--alpha)}
+  88%{opacity:var(--alpha)}
+  100%{transform:translate3d(calc(var(--drift) * -.55),-132vh,0) rotate(calc(var(--tilt) - 9deg)) rotateY(calc(var(--depth) - 16deg)) scale(1.12);opacity:0}
+}
+@media(max-width:700px){
+  .floating-shape{width:calc(var(--size) * .68);height:calc(var(--size) * .68);filter:drop-shadow(0 4px 7px rgba(76,45,117,.09))}
+}
+@media(prefers-reduced-motion:reduce){.geometry-field{display:none}.floating-shape{animation:none}}
+
 @media(max-width:560px){
   .page{padding:18px 10px 36px;}
   .link-name{font-size:1.55rem;}
@@ -175,6 +209,7 @@ footer{
 </style>
 </head>
 <body>
+<div class="geometry-field" id="geometryField" aria-hidden="true"></div>
 
 <div class="atom-bg">
   <svg viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -347,8 +382,55 @@ footer{
 
   </div>
 
-  <footer>© Алла Сиянко · Вищетарасівський ліцей · Методичний хаб</footer>
+  <footer>© Алла Сіянко · Вищетарасівський ліцей · Методичний хаб</footer>
 </div>
+
+
+<script>
+(function(){
+  const field=document.getElementById('geometryField');
+  if(!field || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  // SVG-геометрія має градієнтне заповнення, тонкий контур і світловий відблиск.
+  const shapes=[
+    {name:'triangle',points:'50,5 95,88 5,88',shine:'50,5 50,68'},
+    {name:'trapezoid',points:'25,12 75,12 96,88 4,88',shine:'25,12 75,12 86,52'},
+    {name:'polygon',points:'50,4 88,27 88,70 50,94 12,70 12,27',shine:'50,4 75,20 75,44'},
+    {name:'diamond',points:'50,3 94,50 50,97 6,50',shine:'50,3 77,32'},
+    {name:'pentagon',points:'50,4 95,38 78,91 22,91 5,38',shine:'50,4 80,27'},
+    {name:'hexagon',points:'25,6 75,6 97,50 75,94 25,94 3,50',shine:'25,6 75,6 88,32'}
+  ];
+  const rand=(min,max)=>Math.random()*(max-min)+min;
+  for(let i=0;i<16;i++){
+    const shape=shapes[i%shapes.length];
+    const el=document.createElement('div');
+    el.className='floating-shape';
+    const leftSide=i%2===0;
+    // Фігури тримаються у вузьких бокових смугах і не заходять у центральний текстовий блок.
+    el.style.left=leftSide?rand(.4,8.5)+'%':'auto';
+    el.style.right=leftSide?'auto':rand(.4,8.5)+'%';
+    el.style.setProperty('--x','0px');
+    el.style.setProperty('--size',rand(105,190).toFixed(0)+'px');
+    el.style.setProperty('--duration',rand(25,43).toFixed(1)+'s');
+    el.style.setProperty('--delay',(-rand(0,43)).toFixed(1)+'s');
+    el.style.setProperty('--tilt',rand(-22,22).toFixed(1)+'deg');
+    el.style.setProperty('--depth',rand(-32,32).toFixed(1)+'deg');
+    el.style.setProperty('--drift',rand(-22,22).toFixed(0)+'px');
+    el.style.setProperty('--alpha',rand(.34,.62).toFixed(2));
+    const hue=i%3===0?'#b89fd8':i%3===1?'#9d8bd0':'#a9c6e8';
+    el.innerHTML=`<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+      <defs><linearGradient id="glass-${i}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity=".7"/>
+        <stop offset="42%" stop-color="${hue}" stop-opacity=".34"/>
+        <stop offset="100%" stop-color="#6b3fa0" stop-opacity=".12"/>
+      </linearGradient></defs>
+      <polygon points="${shape.points}" fill="url(#glass-${i})" stroke="rgba(107,63,160,.42)" stroke-width="1.5" stroke-linejoin="round"/>
+      <polyline points="${shape.shine}" fill="none" stroke="rgba(255,255,255,.78)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <polygon points="${shape.points}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width=".7" transform="translate(2 2) scale(.96)"/>
+    </svg>`;
+    field.appendChild(el);
+  }
+})();
+</script>
 
 </body>
 </html>
